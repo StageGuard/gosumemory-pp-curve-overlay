@@ -1,0 +1,12 @@
+{
+  "name": "pp_calc_server_client_test",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "wstest.js",
+  "scripts": {
+    "test": "node wstest.js"
+  },
+  "author": "",
+  "license": "ISC"
+}

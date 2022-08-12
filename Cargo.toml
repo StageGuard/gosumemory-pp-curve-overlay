@@ -1,0 +1,12 @@
+[package]
+name = "pp_calc_server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rosu-pp = "0.8.0"
+websocket = "0.26.5"
+bytes = "1.1.0"
+byteorder = "1.4.3"
