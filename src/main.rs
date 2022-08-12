@@ -1,8 +1,9 @@
 use std::borrow::{Borrow, BorrowMut};
 use std::cmp::max;
+use std::io::Read;
 use std::thread;
-use bytes::Buf;
-use byteorder::ReadBytesExt;
+use bytes::{Buf, BufMut};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use rosu_pp::{Beatmap, BeatmapExt, DifficultyAttributes, GradualDifficultyAttributes, GradualPerformanceAttributes, PerformanceAttributes, ScoreState};
 use websocket::{Message, OwnedMessage};
 use websocket::sync::Server;
@@ -67,7 +68,7 @@ impl CalcSession {
         let mut max_combo = combo_list.first().unwrap_or(&0);
 
         combo_list.iter().for_each(|c| {
-            prev_combo_total += c;
+            prev_combo_total += *c;
             max_combo = max(c, max_combo);
         });
         let remain_max_combo = beatmap_max_combo - prev_combo_total - combo_list.len();
@@ -124,12 +125,40 @@ fn main() {
                             // create beatmap and
                             // return pp curve of max combo and session id
                             1 => {
+                                println!("handle op_code = 1");
+                                let mods = reader.read_u32::<LittleEndian>().expect("read mods");
+
+                                let path_len = reader.read_u32::<LittleEndian>().expect("read pathlen");
+                                let mut path_buf = vec![0u8; path_len as usize];
+                                reader.read_exact(&mut path_buf).expect("read path");
+                                let path = String::from_utf8(path_buf).expect("parse path");
+
+                                println!("creating session for beatmap {:?}", path);
+                                //mem keep
+                                let leaked = Box::leak(Box::new(CalcSession::new(path, mods)));
+
+                                let mut response: Vec<u8> = Vec::new();
+
+                                response.write_u8(1).expect("write opcode"); // op code
+                                response.write_i64::<LittleEndian>(leaked as *const _ as i64).expect("write session mem"); // session mem address
+
+                                let pp_curve = leaked.calc_max_combo_pp_curve(90.0, 1.0);
+                                let pp_curve_iter = pp_curve.iter();
+                                response.write_u32::<LittleEndian>(pp_curve_iter.len() as u32).expect("write pp curve len"); // pp curve len
+                                pp_curve_iter.for_each(|pp| {
+                                    response.write_f64::<LittleEndian>(*pp).expect("write curve point data"); // curve point data
+                                });
+
+                                client.send_message(&Message::binary(response)).expect("send response op=1");
+                            }
+                            // calculate
+                            2 => {
 
                             }
-                            _ => {}
+                            _ => { println!("unknown op code: {:?}", op_code) }
                         }
                     }
-                    _ => {}
+                    _ => { println!("ignoring text message.") }
                 }
             }
             client.shutdown().expect("shutdown exception");
