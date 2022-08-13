@@ -1,28 +1,46 @@
 import WebSocket from 'ws';
 
-function mockOperation1() {
+function mockOp1() {
     let beatmapPath = "C:\\Users\\StageGuard\\AppData\\Local\\osu!\\Songs\\458983 Chino (CVMinase Inori) - Mahou Shoujo Chino (nenpulse bootleg remix)\\Chino (CVMinase Inori) - Mahou Shoujo Chino (nenpulse bootleg remix) (Asahina Momoko) [cappuChino!!].osu";
     let encoder = new TextEncoder();
     let pathEncoded = encoder.encode(beatmapPath);
     
     let buffer = Buffer.alloc(pathEncoded.length + 4 + 4 + 1);
-    buffer.writeUint8(1, 0);
-    buffer.writeUInt32LE(8 | 16, 1);
-    buffer.writeUInt32LE(beatmapPath.length, 5);
-    buffer.write(beatmapPath, 9);
+    let offset = 0;
+
+    buffer.writeUint8(0x1, offset); offset += 1;
+    buffer.writeUInt32LE(1, offset); offset += 4;
+    buffer.writeUInt32LE(beatmapPath.length, offset); offset += 4;
+    buffer.write(beatmapPath, offset);
 
     return buffer;
 }
+
+function mockOp2(sessionMemAddr) {
+    let comboList = [442, 180];
+
+    let buffer = Buffer.alloc(1 + 8 + 8 + 8 * comboList.length);
+    let offset = 0;
+
+    buffer.writeUint8(0x2, offset); offset += 1;
+    buffer.writeBigUInt64LE(sessionMemAddr, offset); offset += 8;
+    buffer.writeBigUint64LE(BigInt(comboList.length), offset); offset += 8;
+
+    for (const i in comboList) {
+        buffer.writeBigUint64LE(BigInt(comboList[i]), offset); offset += 8;
+    }
+
+    return buffer;
+}
+
 const ws = new WebSocket('ws://127.0.0.1:24051');
 
 ws.on('open', () => {
     console.log("connected");
 
     //mock operation 1
-    let op1Buffer = mockOperation1();
+    let op1Buffer = mockOp1();
     ws.send(op1Buffer.buffer);
-
-    ws.close();
 });
 
 ws.on('message', buffer => {
@@ -30,19 +48,31 @@ ws.on('message', buffer => {
     console.log("handle response, op_code = " + opCode);
 
     let offset = 1;
-    switch (opCode) {
-        case 1:
-            let sessionMemAddress = buffer.readBigInt64LE(offset); offset += 8;
-            let ppCurveLen = buffer.readUInt32LE(offset); offset += 4;
-            let ppCurvePoints = [];
-            for (let index = 0; index < ppCurveLen; index++) {
-                ppCurvePoints.push(buffer.readDoubleLE(offset));
-                offset += 8;
-            }
+    if(opCode == 1) {
+        let sessionMemAddress = buffer.readBigInt64LE(offset); offset += 8;
+        let ppCurveLen = buffer.readBigUint64LE(offset); offset += 8;
+        let ppCurvePoints = [];
+        for (let index = 0; index < ppCurveLen; index++) {
+            ppCurvePoints.push(buffer.readDoubleLE(offset));
+            offset += 8;
+        }
 
-            console.log("session mem address: " + sessionMemAddress);
-            console.log("ppCurvePoints: " + ppCurvePoints);
-        break;
+        console.log("session mem address: " + sessionMemAddress);
+        console.log("pp curve points: " + ppCurvePoints);
+
+        for (let index = 0; index < 100; index++) {
+            // mock op2
+            let op2Buffer = mockOp2(sessionMemAddress);
+            ws.send(op2Buffer.buffer);
+        }
+    } else if(opCode == 2) {
+        let ppCurveLen = buffer.readBigUint64LE(offset); offset += 8;
+        let ppCurvePoints = [];
+        for (let index = 0; index < ppCurveLen; index++) {
+            ppCurvePoints.push(buffer.readDoubleLE(offset));
+            offset += 8;
+        }
+        console.log("pp curve points: " + ppCurvePoints);
     }
 
 });
