@@ -1,0 +1,142 @@
+body,html{
+    padding: 0;
+    margin: 0;
+    overflow-y: hidden;
+}
+#main{
+    font-size: 20px;
+    font-family: "JetBrains Mono", Helvetica, sans-serif;
+    font-weight: bold;
+    color: white;
+    width: 1920px;
+    height: 1080px;
+    position: relative;
+	text-shadow: 0 0 8px black;
+}
+
+#top {
+	position: absolute;
+    width: 1920px;
+    height: 200px;
+    transition: ease-in-out 1200ms;
+	z-index: 0;
+}
+#bottom {
+	position: absolute;
+	bottom: 0;
+    width: 1920px;
+    height: 100px;
+    transition: ease-in-out 1200ms;
+	z-index: 0;
+}
+#hpbar {
+	position: absolute;
+    float: left;
+	left: 270px;
+    width: 1300px;
+    height: 100px;
+	background-image: url('../static/hpbar.png');
+	background-repeat: no-repeat;
+	z-index: -1;
+    transition: ease-in-out 50ms;
+}
+#progress{
+    bottom: 0;
+    position: absolute;
+    width: 1400px;
+	height: 90px;
+    overflow: hidden;
+    transition: ease 600ms;
+}
+#score{
+	position: absolute;
+    top: 10px;
+	right: 20px;
+	font-size: 50px !important;
+	text-align: right !important;
+    text-shadow: 5px 5px 5px #000000;
+    transition: all 0.15s ease-in-out;
+}
+#accuracy{
+	position: absolute;
+    top: 70px;
+	right: 63px;
+	font-size: 30px !important;
+	text-align: right !important;
+    text-shadow: 4px 4px 4px #000000;
+    transition: all 0.15s ease-in-out;
+}
+#percent{
+	position: absolute;
+    top: 70px;
+	right: 30px;
+	font-size: 30px !important;
+	text-align: right !important;
+    text-shadow: 4px 4px 4px #000000;
+    transition: all 0.15s ease-in-out;
+}
+#pp{
+	position: absolute;
+    top: 110px;
+	right: 27px;
+	font-size: 28px !important;
+	text-align: right !important;
+    text-shadow: 4px 4px 4px #000000;
+    transition: all 0.15s ease-in-out;
+}
+#combo{
+	position: absolute;
+    bottom: 5px;
+	left: 28px;
+    width: max-content;
+    max-height: 200px;
+	font-size: 60px;
+	text-align: left !important;
+    text-shadow: 5px 5px 5px #000000;
+}
+
+#info {
+    position: absolute;
+    width: 450px;
+    height: 270px;
+    left: 1300px;
+    bottom: 200px;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 25px;
+
+    transition: ease-in-out 1200ms;
+}
+
+#dynstar{
+    position: absolute;
+    top: 20px;
+    left: 40px;
+    font-size: 18px !important;
+    text-align: right !important;
+    text-shadow: 4px 4px 4px #000000;
+    transition: all 0.15s ease-in-out;
+}
+
+#star{
+    position: absolute;
+    top: 20px;
+    left: 117px;
+    font-size: 18px !important;
+    text-align: right !important;
+    color: rgb(255, 204, 34);
+    text-shadow: 4px 4px 4px #000000;
+    transition: all 0.15s ease-in-out;
+}
+
+#ppcurvechat-container{
+    position: absolute;
+    left: 20px;
+    top: 55px;
+    width: 400px;
+    height: 200px;
+}
+
+.text{
+    display: flex;
+    justify-content: center;
+}

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="deps/countUp.js"></script>
+    <script src="deps/jquery.js"></script>
+    <script src="deps/reconnecting-websocket.min.js"></script>
+    <script src="deps/chart.min.js"></script>
+</head>
+
+<body>
+    <div id="main">
+		<div id="top">
+			<span id="score"></span>
+			<span id="accuracy"></span>
+			<span id="percent">%</span>
+            <span id="pp"></span>
+		</div>
+        <div id="info">
+            <span id="dynstar">Star: </span>
+            <span id="star"></span>
+            <div id="ppcurvechat-container">
+                <canvas id="ppcurvechat"></canvas>
+            </div>
+        </div>
+		<div id="bottom">
+			<span id="combo"></span>
+		</div>
+    </div>
+    <script src="index.js"></script>
+</body>
+
+</html>
