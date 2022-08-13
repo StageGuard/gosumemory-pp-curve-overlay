@@ -35,6 +35,8 @@ overlay 主体，他会和 pp_calc_server 进行 WebSocket 通信（就像和 go
 
 运行 `cargo build --release` 构建 pp_calc_server，构建好的程序在 `target/release/pp_calc_server.exe` (Windows)。
 
+不想自己构建可以前往 [releases](https://github.com/StageGuard/pp_calc_server/releases) 下载预构建程序。
+
 把 [gosumemory_static/pp_graph_game_info](gosumemory_static/pp_graph_game_info) 文件夹 放到 `你的gosumemory目录/static/` 下。
 
 打开 `pp_graph_game_info/index.js` 修改以下内容：
