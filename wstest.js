@@ -33,6 +33,27 @@ function mockOp2(sessionMemAddr) {
     return buffer;
 }
 
+function mockOp3(sessionMemAddr, passedObjects) {
+    let buffer = Buffer.alloc(1 + 8 + 8);
+    let offset = 0;
+
+    buffer.writeUint8(0x3, offset); offset += 1;
+    buffer.writeBigUInt64LE(sessionMemAddr, offset); offset += 8;
+    buffer.writeBigUint64LE(BigInt(passedObjects), offset); offset += 8;
+
+    return buffer;
+}
+
+function mockOp4(sessionMemAddr) {
+    let buffer = Buffer.alloc(1 + 8);
+    let offset = 0;
+
+    buffer.writeUint8(0x4, offset); offset += 1;
+    buffer.writeBigUInt64LE(sessionMemAddr, offset); offset += 8;
+
+    return buffer;
+}
+
 const ws = new WebSocket('ws://127.0.0.1:24051');
 
 ws.on('open', () => {
@@ -65,6 +86,14 @@ ws.on('message', buffer => {
             let op2Buffer = mockOp2(sessionMemAddress);
             ws.send(op2Buffer.buffer);
         }
+
+        for(let index = 0; index < 1500; index += 10) {
+            let op3Buffer = mockOp3(sessionMemAddress, index);
+            ws.send(op3Buffer.buffer);
+        }
+
+        let op4Buffer = mockOp4(sessionMemAddress)
+        ws.send(op4Buffer);
     } else if(opCode == 2) {
         let ppCurveLen = buffer.readBigUint64LE(offset); offset += 8;
         let ppCurvePoints = [];
@@ -73,6 +102,13 @@ ws.on('message', buffer => {
             offset += 8;
         }
         console.log("pp curve points: " + ppCurvePoints);
+    } else if(opCode == 3) {
+        let passedObjects = buffer.readBigUInt64LE(offset); offset += 8;
+        let stars = buffer.readDoubleLE(offset); offset += 8;
+        console.log("current passed objects: " + passedObjects + ", stars: " + stars);
+    } else if(opCode == 4) {
+        let releaseSessionMemAddr = buffer.readBigInt64LE(offset); offset += 8;
+        console.log("session at " + releaseSessionMemAddr + " is released.");
     }
 
 });

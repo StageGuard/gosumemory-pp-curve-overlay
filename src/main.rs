@@ -1,6 +1,6 @@
 mod lib;
 
-use std::io::{Read, repeat};
+use std::io::Read;
 use std::{mem, thread};
 use bytes::Buf;
 use byteorder::{LE, ReadBytesExt, WriteBytesExt};
@@ -54,7 +54,7 @@ fn main() {
                                     response.write_f64::<LE>(*pp).expect("write curve point data"); // curve point data
                                 });
 
-                                client.send_message(&Message::binary(response)).expect("send response op=1");
+                                client.send_message(&Message::binary(response)).expect("send response op = 1");
                             }
                             // calculate current pp curve
                             2 => {
@@ -83,15 +83,48 @@ fn main() {
                                     response.write_f64::<LE>(*pp).expect("write curve point data"); // curve point data
                                 });
 
-                                client.send_message(&Message::binary(response)).expect("send response op=1");
+                                client.send_message(&Message::binary(response)).expect("send response op = 2");
                             }
-                            //gradual diff
+                            // gradual diff
                             3 => {
-                                println!("handle op_code = 2");
+                                println!("handle op_code = 3");
                                 let session = unsafe {
                                     let session_address = reader.read_i64::<LE>().expect("read session address");
                                     mem::transmute::<i64, &mut CalcSession>(session_address)
                                 };
+
+                                let passed_objects = reader.read_u64::<LE>().expect("read passed objects");
+
+                                let gradual_diff = session.calc_gradual_diff(passed_objects as usize);
+                                let mut response: Vec<u8> = Vec::new();
+
+                                response.write_u8(3).expect("write opcode"); // op code
+                                response.write_u64::<LE>(passed_objects).expect("write passed objects"); // passed objects
+                                response.write_f64::<LE>(if let Some(gradual_diff) = gradual_diff {
+                                    gradual_diff.stars()
+                                } else {
+                                    0f64
+                                }).expect("write stars"); // current stars
+
+                                client.send_message(&Message::binary(response)).expect("send message op = 3");
+                            }
+                            // release calc session
+                            4 => {
+                                println!("handle op_code = 4");
+
+                                let session_address = reader.read_i64::<LE>().expect("read session address");
+                                let session = unsafe { mem::transmute::<i64, &mut CalcSession>(session_address) };
+
+                                println!("releasing calc session at {:?}", session_address);
+
+                                unsafe { Box::from_raw(session) };
+
+                                let mut response: Vec<u8> = Vec::new();
+                                response.write_u8(4).expect("write opcode"); // op code
+                                response.write_i64::<LE>(session_address).expect("write session mem"); // session mem address
+
+                                client.send_message(&Message::binary(response)).expect("send message op = 4");
+
                             }
                             _ => { println!("unknown op code: {:?}", op_code) }
                         }
