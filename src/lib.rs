@@ -1,5 +1,4 @@
 use std::cmp::max;
-use std::panic;
 use std::panic::catch_unwind;
 use rosu_pp::{
     Beatmap,
@@ -12,7 +11,6 @@ pub struct CalcSession {
     beatmap: Beatmap,
     mods: u32,
     gradual_diff: Option<Vec<DifficultyAttributes>>,
-    gradual_perf: Option<PerformanceAttributes>,
     perf: Option<PerformanceAttributes>
 }
 
@@ -22,7 +20,6 @@ impl CalcSession {
             beatmap: Beatmap::from_path(path).unwrap(),
             mods,
             gradual_diff: None,
-            gradual_perf: None,
             perf: None
         }.init_gradual_calc()
     }
@@ -59,7 +56,7 @@ impl CalcSession {
     }
 
     //called at every tick
-    pub fn calc_current_pp_curve(&self, start_acc: f64, step: f64, combo_list: Vec<usize>) -> Vec<f64> {
+    pub fn calc_current_pp_curve(&self, start_acc: f64, step: f64, combo_list: Vec<usize>, misses: usize) -> Vec<f64> {
         let mut result = Vec::new();
         let mut current = start_acc;
 
@@ -71,12 +68,12 @@ impl CalcSession {
             prev_combo_total += *c;
             max_combo = max(c, max_combo);
         });
-        let remain_max_combo = beatmap_max_combo - prev_combo_total - combo_list.len();
+        let remain_max_combo = beatmap_max_combo - prev_combo_total - misses;
         max_combo = max(&remain_max_combo, max_combo);
-        let passed_objs = self.beatmap.hit_objects.len() - combo_list.len();
+        let passed_objs = self.beatmap.hit_objects.len() - misses;
 
         println!("combo list: {:?}, max_combo: {:?}, passed_objects: {:?}, misses: {:?}",
-                 combo_list, *max_combo, passed_objs, combo_list.len()
+                 combo_list, *max_combo, passed_objs, misses
         );
 
         let mut attr = self.perf.clone().unwrap();
@@ -85,7 +82,7 @@ impl CalcSession {
             let calc = self.beatmap.pp().attributes(attr)
                 .combo(*max_combo)
                 .passed_objects(passed_objs)
-                .misses(combo_list.len());
+                .misses(misses);
             let attr_new = catch_unwind(|| calc.accuracy(current).calculate());
 
             if let Ok(attr_new) = attr_new {

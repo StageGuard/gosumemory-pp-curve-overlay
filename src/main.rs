@@ -1,7 +1,7 @@
 mod lib;
 
 use std::io::Read;
-use std::{mem, thread};
+use std::{mem, panic, thread};
 use bytes::Buf;
 use byteorder::{LE, ReadBytesExt, WriteBytesExt};
 use websocket::{Message, OwnedMessage};
@@ -9,8 +9,10 @@ use websocket::sync::Server;
 use lib::CalcSession;
 
 fn main() {
-    let server = Server::bind("127.0.0.1:24051").unwrap();
+    let service_addr = "127.0.0.1:24051";
+    let server = Server::bind(service_addr).unwrap();
 
+    println!("listening at {:?}", service_addr);
     for connection in server.filter_map(Result::ok) {
         thread::spawn(move || {
             let mut client = connection.accept().unwrap();
@@ -64,6 +66,7 @@ fn main() {
                                     mem::transmute::<i64, &mut CalcSession>(session_address)
                                 };
 
+                                let misses = reader.read_u64::<LE>().expect("read misses") as usize;
                                 let combo_list_len = reader.read_u64::<LE>().expect("read combo list len") as usize;
                                 let mut combo_list: Vec<usize> =  Vec::with_capacity(combo_list_len);
 
@@ -73,7 +76,7 @@ fn main() {
                                     )
                                 }
 
-                                let pp_curve = session.calc_current_pp_curve(90.0, 1.0, combo_list);
+                                let pp_curve = session.calc_current_pp_curve(90.0, 1.0, combo_list, misses);
                                 let mut response: Vec<u8> = Vec::new();
 
                                 response.write_u8(2).expect("write opcode"); // op code
