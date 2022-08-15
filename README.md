@@ -22,7 +22,7 @@
 ### pp_graph_game_info
 overlay 主体，他会和 pp_calc_server 进行 WebSocket 通信（就像和 gosumemory 通信一样），传输指令和计算结果。
 
-它还自带分数指示器，在直播端使用时需要把游戏中的分数指示器关掉（CTRL + TAB）。目前暂时无法关闭。
+它还自带分数指示器，在直播端使用时需要按 CTRL + TAB 把游戏中的分数指示器关掉（可选）。
 
 对于 combo 指示器，如果没有 miss 或 miss 之后连了比之前更多的 combo 数，combo 指示器会变成绿色，其代表了当前打图的最大 combo 数。
 
@@ -39,16 +39,13 @@ overlay 主体，他会和 pp_calc_server 进行 WebSocket 通信（就像和 go
 
 把 [gosumemory_static/pp_graph_game_info](gosumemory_static/pp_graph_game_info) 文件夹 放到 `你的gosumemory目录/static/` 下。
 
-打开 `pp_graph_game_info/index.js` 修改以下内容：
-```javascript
-//第四行，把这个路径改成你的 osu! 歌曲路径，注意反斜杠要打两个 \\
-//如果你的 osu! 是默认安装位置，那只需要把 <username> 改成你的 Windows 用户文件夹即可。
-let osuSongsPath = "C:\\Users\\<username>\\AppData\\Local\\osu!\\Songs\\"
-```
+打开 `pp_graph_game_info/cnofig.js` 按照说明修改配置选项。
 
 打开 `pp_calc_server.exe` 会看到程序有如下输出：
 ```
 listening at "127.0.0.1:24051"
 ```
 
-打开 gosumemory 程序，在 OBS 中添加浏览器源，地址为 `http://127.0.0.1:24050/pp_graph_game_info/` 。
+打开 gosumemory 程序，在 OBS 中添加浏览器源。
+* 完整功能（PP 曲线图 + 分数指示器）：`http://127.0.0.1:24050/pp_graph_game_info/`。
+* 仅 PP 曲线图：`http://127.0.0.1:24050/pp_graph_game_info/ppCurveChart`。

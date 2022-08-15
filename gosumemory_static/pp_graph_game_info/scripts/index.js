@@ -1,8 +1,6 @@
 let gosuSocket = new ReconnectingWebSocket("ws://127.0.0.1:24050/ws");
 let ppCalcSocket = new ReconnectingWebSocket("ws://127.0.0.1:24051");
 
-let osuSongsPath = "C:\\Users\\<username>\\AppData\\Local\\osu!\\Songs\\"
-
 let combo = document.getElementById("combo");
 let score = document.getElementById("score");
 let accuracy = document.getElementById("accuracy");
@@ -14,6 +12,9 @@ let top_cont = document.getElementById("top");
 let bottom_cont = document.getElementById("bottom");
 let info_cont = document.getElementById("info");
 
+document.getElementById("main").style.fontFamily = config.font;
+Chart.defaults.font.family = config.font;
+
 let animation = {
     acc: new CountUp('accuracy', 0, 0, 2, .2, { useEasing: true, useGrouping: true, separator: ",", decimal: "." }),
     score: new CountUp('score', 0, 0, 0, .2, { useEasing: true, useGrouping: true, separator: ",", decimal: "." }),
@@ -21,90 +22,6 @@ let animation = {
     pp: new CountUp('pp', 0, 0, 0, .2, {useEasing: true, useGrouping: false, separator: ",", decimal: ".", suffix: " pp" }),
     star: new CountUp('star', 0, 0, 2, .2, {useEasing: true, useGrouping: false, separator: ",", decimal: "." }),
 }
-
-let textEncoder = new TextEncoder();
-let CalcProcessor = {
-    createOp1Packet(path, mods) {
-        let pathArr = textEncoder.encode(path);
-        let buffer = new ArrayBuffer(pathArr.length + 4 + 4 + 1);
-        let view = new DataView(buffer);
-        let offset = 0;
-
-        view.setUint8(offset, 0x1); offset += 1;
-        view.setUint32(offset, mods, true); offset += 4;
-        view.setUint32(offset, pathArr.length, true); offset += 4;
-
-        let u8Arr = new Uint8Array(buffer);
-        u8Arr.set(pathArr, offset);
-
-        return u8Arr;
-    },
-    parseOp1Packet(view) {
-        let offset = 1;
-        let sessionMemAddr = view.getBigInt64(offset, true); offset += 8;
-        let ppCurveLen = view.getBigUint64(offset, true); offset += 8;
-        let ppCurvePoints = [];
-        for (let index = 0; index < ppCurveLen; index++) {
-            ppCurvePoints.push(view.getFloat64(offset, true));
-            offset += 8;
-        }
-        return { sessionMemAddr, ppCurvePoints }
-    },
-
-    createOp2Packet(sessionMemAddr, comboList, misses) {
-        let buffer = new ArrayBuffer(1 + 8 + 8 + 8 + 8 * comboList.length);
-        let view = new DataView(buffer);
-        let offset = 0;
-
-        view.setUint8(offset, 0x2); offset += 1;
-        view.setBigUint64(offset, sessionMemAddr, true); offset += 8;
-        view.setBigUint64(offset, BigInt(misses), true); offset += 8;
-        view.setBigUint64(offset, BigInt(comboList.length), true); offset += 8;
-
-        for (const i in comboList) {
-            view.setBigUint64(offset, BigInt(comboList[i]), true); offset += 8;
-        }
-
-        return new Uint8Array(buffer);
-    },
-    parseOp2Packet(view) {
-        let offset = 1;
-
-        let ppCurveLen = view.getBigUint64(offset, true); offset += 8;
-        let ppCurvePoints = [];
-        for (let index = 0; index < ppCurveLen; index++) {
-            ppCurvePoints.push(view.getFloat64(offset, true));
-            offset += 8;
-        }
-
-        return { ppCurvePoints };
-    },
-
-    createOp4Packet(sessionMemAddr) {
-        let buffer = new ArrayBuffer(1 + 8);
-        let view = new DataView(buffer);
-        let offset = 0;
-
-        view.setUint8(offset, 0x4); offset += 1;
-        view.setBigUint64(offset, sessionMemAddr, true); offset += 8;
-
-        return new Uint8Array(buffer);
-    },
-    parseOp4Packet(view) {
-        let offset = 1;
-
-        let sessionMemAddr = view.getBigInt64(offset, true); offset += 8;
-
-        return { sessionMemAddr };
-    }
-}
-
-class CurrPPPoint extends Chart.BubbleController {
-    draw() { super.draw(arguments); }
-}
-CurrPPPoint.id = "currpppoint";
-Chart.register(CurrPPPoint);
-Chart.defaults.font.family = 'JetBrains Mono';
 
 let gameState;
 let currentCombo = 0;
@@ -129,71 +46,7 @@ function calculateInterval(minValue) {
     return { minValue, maxValue, interval, startValue };
 }
 
-const ppCurveChart = new Chart(chartContext, {
-    type: 'currpppoint',
-    data: {
-        labels: ['90', '91', '92', '93', '94', '95', '96', '97', '98', '99', '100'],
-        datasets: [{
-            label: "curr",
-            data: [],
-            pointRadius: 5,
-            borderColor: "rgb(179, 255, 102)",
-            backgroundColor: "rgb(179, 255, 102)",
-
-        }, {
-            label: 'if fc curve',
-            data: [],
-            borderWidth: 4,
-            borderColor: "rgb(255, 204, 34)",
-            fill: false,
-            pointRadius: 0,
-            cubicInterpolationMode: 'monotone',
-            type: 'line',
-        }, {
-            label: 'curr curve',
-            data: [],
-            borderWidth: 4,
-            borderColor: "white",
-            fill: false,
-            pointRadius: 0,
-            cubicInterpolationMode: 'monotone',
-            type: 'line',
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scaleFontColor: "rgb(255,255,255)",
-        interaction: {
-            mode: 'nearest',
-            axis: 'x',
-            intersect: false
-        },
-        scales: {
-            x: {
-                grid: { display: false },
-                ticks: {
-                    stepSize: 1,
-                    color: "white",
-                    size: "12px",
-                }
-            },
-            y: {
-                grid: { display: true },
-                ticks: {
-                    color: "white",
-                    size: "15px",
-                }
-            }
-        },
-        plugins: {
-            legend: {
-                display: false,
-                position: 'bottom'
-            }
-        }
-    }
-});
+const ppCurveChart = createPPCurveChat(chartContext);
 
 gosuSocket.onopen = () => { console.log("Successfully connected to gosumemory."); };
 ppCalcSocket.onopen = () => { console.log("Successfully connected to pp calc server.") }
@@ -214,8 +67,8 @@ ppCalcSocket.onmessage = event => {
             currentMaxComboPPCurve = result.ppCurvePoints;
             console.log("created calc session at " + currentCalcSessionAddr);
 
-            let yAxios = calculateInterval(currentMaxComboPPCurve[0]);
-            ppCurveChart.config.options.scales.y.suggestedMin = yAxios.minValue;
+            let yAxios = calculateInterval(config.curveYAxiosStartFromZero ? 0 : currentMaxComboPPCurve[0]);
+            ppCurveChart.config.options.scales.y.suggestedMin = config.curveYAxiosStartFromZero ? 0 : yAxios.minValue;
             ppCurveChart.config.options.scales.y.suggestedMax = yAxios.maxValue;
             ppCurveChart.config.options.scales.y.ticks.stepSize = yAxios.interval;
 
@@ -227,8 +80,8 @@ ppCalcSocket.onmessage = event => {
             let result = CalcProcessor.parseOp2Packet(view);
             currentComboPPCurve = result.ppCurvePoints;
 
-            let yAxios = calculateInterval(currentComboPPCurve[0]);
-            ppCurveChart.config.options.scales.y.suggestedMin = yAxios.minValue;
+            let yAxios = calculateInterval(config.curveYAxiosStartFromZero ? 0 : currentComboPPCurve[0]);
+            ppCurveChart.config.options.scales.y.suggestedMin = config.curveYAxiosStartFromZero ? 0 : yAxios.minValue;
             ppCurveChart.config.options.scales.y.suggestedMax = yAxios.maxValue;
             ppCurveChart.config.options.scales.y.ticks.stepSize = yAxios.interval;
 
@@ -262,7 +115,7 @@ gosuSocket.onmessage = event => {
             currentPp = 0.0;
 
             ppCalcSocket.send(CalcProcessor.createOp1Packet((() => {
-                let path = String(osuSongsPath);
+                let path = String(config.osuSongsPath);
                 path += data.menu.bm.path.folder;
                 path += "\\";
                 path += data.menu.bm.path.file;
@@ -289,9 +142,7 @@ gosuSocket.onmessage = event => {
     }
 
     if (gameState === 2 && currentCalcSessionAddr !== null) {
-        if (currentCalcSessionAddr != null) {
-            ppCalcSocket.send(CalcProcessor.createOp2Packet(currentCalcSessionAddr, comboList, data.gameplay.hits["0"]));
-        }
+        ppCalcSocket.send(CalcProcessor.createOp2Packet(currentCalcSessionAddr, comboList, data.gameplay.hits["0"]));
     }
 
     if (data.gameplay.score > 0) {

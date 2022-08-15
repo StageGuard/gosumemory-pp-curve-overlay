@@ -1,0 +1,49 @@
+body {
+    width: 450px;
+    height: 270px;
+}
+
+#info {
+    width: 450px;
+    height: 270px;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 25px;
+
+    font-size: 20px;
+    font-family: "JetBrains Mono", Helvetica, sans-serif;
+    font-weight: bold;
+    color: transparent;
+    text-shadow: 0 0 8px black;
+
+    transition: ease-in-out 1200ms;
+}
+
+#dynstar {
+    position: absolute;
+    top: 20px;
+    left: 40px;
+    font-size: 18px !important;
+    text-align: right !important;
+    text-shadow: 4px 4px 4px #000000;
+    transition: all 0.15s ease-in-out;
+    color: white;
+}
+
+#star {
+    position: absolute;
+    top: 20px;
+    left: 100px;
+    font-size: 18px !important;
+    text-align: right !important;
+    color: rgb(255, 204, 34);
+    text-shadow: 4px 4px 4px #000000;
+    transition: all 0.15s ease-in-out;
+}
+
+#ppcurvechat-container{
+    position: absolute;
+    left: 20px;
+    top: 55px;
+    width: 400px;
+    height: 200px;
+}

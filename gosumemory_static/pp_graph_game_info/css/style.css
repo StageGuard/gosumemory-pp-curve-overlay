@@ -29,17 +29,6 @@ body,html{
     transition: ease-in-out 1200ms;
 	z-index: 0;
 }
-#hpbar {
-	position: absolute;
-    float: left;
-	left: 270px;
-    width: 1300px;
-    height: 100px;
-	background-image: url('../static/hpbar.png');
-	background-repeat: no-repeat;
-	z-index: -1;
-    transition: ease-in-out 50ms;
-}
 #progress{
     bottom: 0;
     position: absolute;
@@ -105,35 +94,6 @@ body,html{
     border-radius: 25px;
 
     transition: ease-in-out 1200ms;
-}
-
-#dynstar{
-    position: absolute;
-    top: 20px;
-    left: 40px;
-    font-size: 18px !important;
-    text-align: right !important;
-    text-shadow: 4px 4px 4px #000000;
-    transition: all 0.15s ease-in-out;
-}
-
-#star{
-    position: absolute;
-    top: 20px;
-    left: 117px;
-    font-size: 18px !important;
-    text-align: right !important;
-    color: rgb(255, 204, 34);
-    text-shadow: 4px 4px 4px #000000;
-    transition: all 0.15s ease-in-out;
-}
-
-#ppcurvechat-container{
-    position: absolute;
-    left: 20px;
-    top: 55px;
-    width: 400px;
-    height: 200px;
 }
 
 .text{
