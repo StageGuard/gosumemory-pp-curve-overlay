@@ -22,7 +22,7 @@
 ### pp_graph_game_info
 overlay 主体，他会和 pp_calc_server 进行 WebSocket 通信（就像和 gosumemory 通信一样），传输指令和计算结果。
 
-### 分数指示器
+#### 分数指示器
 
 显示当前 score，accuracy，combo 和 pp，在直播端使用时需要按 CTRL + TAB 把游戏中的分数指示器关掉（可选）。
 
@@ -32,7 +32,7 @@ overlay 主体，他会和 pp_calc_server 进行 WebSocket 通信（就像和 go
 
 对于 accuracy 指示器和 PP 指示器，如果数值比之前高，它会变成绿色，代表 accuracy 或 PP 提高了，否则它会变成红色。
 
-### PP 曲线图
+#### PP 曲线图
 
 在 PP 曲线图中，黄色曲线代表如果全连（Full Combo）的 PP 曲线，白色代表当前状态如果在结束时全连的 PP 曲线，绿色的点表示此时此刻的 PP 值，同 PP 指示器。
 
