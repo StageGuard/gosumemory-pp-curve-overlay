@@ -1,5 +1,5 @@
 use std::cmp::max;
-use std::panic::catch_unwind;
+use std::panic::{catch_unwind, take_hook, set_hook};
 use rosu_pp::{
     Beatmap,
     BeatmapExt,
@@ -108,7 +108,11 @@ impl CalcSession {
                 .combo(*max_combo)
                 .passed_objects(passed_objs)
                 .misses(misses);
+
+            let prev_hook = take_hook();
+            set_hook(Box::new(|_| { }));
             let attr_new = catch_unwind(|| calc.accuracy(current).calculate());
+            set_hook(prev_hook);
 
             if let Ok(attr_new) = attr_new {
                 result.push(attr_new.pp());
