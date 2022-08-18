@@ -6,29 +6,58 @@ use rosu_pp::{
     DifficultyAttributes,
     PerformanceAttributes
 };
+use rosu_pp::parse::{HitObject, HitObjectKind, Pos2};
 
+#[derive(Debug)]
 pub struct CalcSession {
     beatmap: Beatmap,
     mods: u32,
     gradual_diff: Option<Vec<DifficultyAttributes>>,
-    perf: Option<PerformanceAttributes>
+    perf: Option<PerformanceAttributes>,
+
+    pub circle_radius: f32,
+    pub hit_time_window: f64,
+    flip_objects: bool,
+
+    current_hit_object_index: usize,
+    last_hit_object_index: usize,
+    last_k1_pressed: bool,
+    last_k2_pressed: bool
 }
 
 impl CalcSession {
-    pub fn new(path: String, mods: u32) -> Self {
+    pub fn new(path: &String, mods: u32) -> Self {
         Self {
             beatmap: Beatmap::from_path(path).unwrap(),
             mods,
             gradual_diff: None,
-            perf: None
-        }.init_gradual_calc()
+            perf: None,
+            circle_radius: 0f32,
+            hit_time_window: 0f64,
+            flip_objects: false,
+            current_hit_object_index: 0,
+            last_hit_object_index: 0,
+            last_k1_pressed: false,
+            last_k2_pressed: false,
+        }.init_calc_factors()
     }
 
-    fn init_gradual_calc(mut self) -> Self {
+    fn init_calc_factors(mut self) -> Self {
         self.gradual_diff = Some(
             self.beatmap.gradual_difficulty(self.mods).collect::<Vec<DifficultyAttributes>>()
         );
         self.perf = Some(self.beatmap.pp().mods(self.mods).calculate());
+
+        let beatmap_attr = self.beatmap.attributes().mods(self.mods).build();
+        self.circle_radius = 54.42 - 4.48 * beatmap_attr.cs as f32;
+        self.hit_time_window = -12f64 * beatmap_attr.od + 259.5;
+        if self.mods & 16 > 0 { self.flip_objects = true };
+        // find the last object which is not spinner
+        for (idx, hit_object) in self.beatmap.hit_objects.iter().rev().enumerate() {
+            if matches!(hit_object.kind, HitObjectKind::Spinner { .. }) { continue }
+            self.last_hit_object_index = self.beatmap.hit_objects.len() - idx - 1;
+            break
+        }
         self
     }
 
@@ -72,10 +101,6 @@ impl CalcSession {
         max_combo = max(&remain_max_combo, max_combo);
         let passed_objs = self.beatmap.hit_objects.len() - misses;
 
-        println!("combo list: {:?}, max_combo: {:?}, passed_objects: {:?}, misses: {:?}",
-                 combo_list, *max_combo, passed_objs, misses
-        );
-
         let mut attr = self.perf.clone().unwrap();
 
         while current <= 100.0 {
@@ -97,10 +122,70 @@ impl CalcSession {
         result
     }
 
+    pub fn associate_hit_object<'a>(&mut self, frames: &'a [HitFrame]) -> Vec<(HitObject, &'a HitFrame)> {
+        let mut hit_objects: &[HitObject];
+        let mut result: Vec<(HitObject, &'a HitFrame)> = Vec::new();
+
+        for frame in frames.iter() {
+            if (!self.last_k1_pressed && frame.k1) || (!self.last_k2_pressed && frame.k2) {
+                hit_objects = &self.beatmap.hit_objects[self.current_hit_object_index..self.last_hit_object_index+1];
+                let mut hit_object: Option<HitObject> = None;
+
+                // pressed after the last object, it is already at the end of the song.
+                if let Some(ho) = hit_objects.last() {
+                    if frame.time - ho.start_time > self.hit_time_window  { continue }
+                }
+
+                for ho in hit_objects {
+                    // ignore spinner
+                    if matches!(ho.kind, HitObjectKind::Spinner { .. }) {
+                        self.current_hit_object_index += 1;
+                        continue
+                    }
+                    // valid hit
+                    let obj_pos = if self.flip_objects { Pos2 { x: ho.pos.x, y: 384f32 - ho.pos.y } } else { ho.pos };
+                    if f64::abs(ho.start_time - frame.time) <= self.hit_time_window
+                        && obj_pos.distance(frame.pos) <= self.circle_radius
+                    {
+                        hit_object = Some(if self.flip_objects {
+                            HitObject {
+                                pos: obj_pos,
+                                start_time: ho.start_time,
+                                kind: ho.kind.clone()
+                            }
+                        } else { ho.clone() });
+                        self.current_hit_object_index += 1;
+                        break;
+                    }
+                    // missed object
+                    if frame.time - ho.start_time > self.hit_time_window {
+                        self.current_hit_object_index += 1;
+                    }
+                }
+
+                if let Some(hit_object) = hit_object {
+                    result.push((hit_object, frame));
+                }
+            }
+            self.last_k1_pressed = frame.k1;
+            self.last_k2_pressed = frame.k2;
+        }
+
+        result
+    }
+
     pub fn calc_gradual_diff(&self, n_objects: usize) -> Option<&DifficultyAttributes> {
         let gradual_diff = self.gradual_diff.as_ref().unwrap();
         gradual_diff.get(n_objects)
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct HitFrame {
+    pub pos: Pos2,
+    pub time: f64,
+    pub k1: bool,
+    pub k2: bool
 }
 
 /*impl <'a> Drop for CalcSession<'a> {
