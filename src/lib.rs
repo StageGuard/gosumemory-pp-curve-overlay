@@ -131,6 +131,9 @@ impl CalcSession {
         let mut result: Vec<(HitObject, &'a HitFrame)> = Vec::new();
 
         for frame in frames.iter() {
+            // prevent whole frames at the start of watching replay
+            if frame.time <= 0f64 { self.current_hit_object_index = 0 }
+
             if (!self.last_k1_pressed && frame.k1) || (!self.last_k2_pressed && frame.k2) {
                 hit_objects = &self.beatmap.hit_objects[self.current_hit_object_index..self.last_hit_object_index+1];
                 let mut hit_object: Option<HitObject> = None;
