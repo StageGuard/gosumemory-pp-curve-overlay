@@ -19,11 +19,11 @@ fn main() {
     let service_addr = "127.0.0.1:24051";
     let server = Server::bind(service_addr).unwrap();
 
-    println!("listening at {:?}", service_addr);
+    println!("listening at {:?}.", service_addr);
     for connection in server.filter_map(Result::ok) {
         thread::spawn(move || {
             let mut client = connection.accept().unwrap();
-            println!("accepting connection from {:?}", client.peer_addr().unwrap().ip());
+            println!("accepting connection from {:?}.", client.peer_addr().unwrap().ip());
             let mut close = false;
 
             while !close {
@@ -52,11 +52,11 @@ fn main() {
                                 let entry = calc_pool.entry(path);
                                 let session_addr = match entry {
                                     Entry::Occupied(o) => {
-                                        println!("get existing session at {}", o.get());
+                                        println!("use existing session at {}.", o.get());
                                         o.into_mut()
                                     },
                                     Entry::Vacant(v) => {
-                                        println!("creating session for beatmap {:?}", v.key());
+                                        println!("creating session for beatmap {:?}.", v.key().split('\\').last().expect("get file name of beatmap"));
                                         //mem keep
                                         let leaked = Box::leak(Box::new(CalcSession::new(v.key(), mods)));
                                         v.insert(leaked as *const _ as i64)
@@ -81,7 +81,7 @@ fn main() {
 
                                 if prev_pool_size == calc_pool.len() + 1 {
                                     let session = unsafe { mem::transmute::<i64, &mut CalcSession>(session_address) };
-                                    println!("releasing calc session at {}", session_address);
+                                    println!("releasing calc session at {}.", session_address);
                                     unsafe { Box::from_raw(session) };
                                 } else {
                                     println!("session at {} is already released.", session_address);
@@ -102,7 +102,7 @@ fn main() {
 
                                 let pp_curve = session.calc_max_combo_pp_curve(90.0, 1.0);
 
-                                println!("max combo pp curve range: {} -> {}",
+                                println!("max combo pp curve range: {} -> {}.",
                                          pp_curve.first().expect("get first elem of max combo pp curve"),
                                          pp_curve.last().expect("get first elem of max combo pp curve"),
                                 );
@@ -138,7 +138,7 @@ fn main() {
 
                                 let pp_curve = session.calc_current_pp_curve(90.0, 1.0, combo_list, misses);
 
-                                println!("current pp curve range: {} -> {}, {}",
+                                println!("current pp curve range: {} -> {}, {}.",
                                          pp_curve.first().expect("get first elem of max combo pp curve"),
                                          pp_curve.last().expect("get first elem of max combo pp curve"),
                                          debug_msg
@@ -201,9 +201,9 @@ fn main() {
                                     frames.push(HitFrame { pos: Pos2 { x, y }, time, k1, k2 });
                                 }
 
-                                println!("frame length: {}, time slice: {} -> {}", frame_len, start_time, end_time);
-
                                 let objects = session.associate_hit_object(frames.as_slice());
+
+                                println!("frame length: {}, time slice: {} -> {}, hit objects: {}.", frame_len, start_time, end_time, objects.len());
 
                                 let mut response: Vec<u8> = Vec::new();
                                 response.write_u8(op_code).expect("write opcode"); // op code
@@ -221,14 +221,14 @@ fn main() {
 
                                 client.send_message(&Message::binary(response)).expect("send message op = 5");
                             }
-                            _ => { println!("unknown op code: {:?}", op_code) }
+                            _ => { println!("unknown op code: {:?}.", op_code) }
                         }
                     }
                     _ => { println!("ignoring text message.") }
                 }
             }
-            println!("closing connection of {:?}", client.peer_addr().unwrap().ip());
-            client.shutdown().expect("shutdown exception");
+            println!("closing connection of {:?}.", client.peer_addr().unwrap().ip());
+            client.shutdown().expect("shutdown exception.");
         });
     }
 }
