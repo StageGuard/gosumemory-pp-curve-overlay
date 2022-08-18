@@ -119,34 +119,37 @@ ppCalcSocket.onmessage = event => {
 
         let opCode = view.getUint8(offset);
 
-        if (opCode === 1) {
-            let result = CalcProcessor.parseOp1Packet(view);
+        if (opCode === 0) {
+            let result = CalcProcessor.parseCalcSessionPacket(view);
             currentCalcSessionAddr = result.sessionMemAddr;
-            currentMaxComboPPCurve = result.ppCurvePoints;
             console.log("created calc session at " + currentCalcSessionAddr);
 
-            let yAxios = calculateInterval(config.curveYAxiosStartFromZero ? 0 : currentMaxComboPPCurve[0]);
-            ppCurveChart.config.options.scales.y.suggestedMin = config.curveYAxiosStartFromZero ? 0 : yAxios.minValue;
-            ppCurveChart.config.options.scales.y.suggestedMax = yAxios.maxValue;
-            ppCurveChart.config.options.scales.y.ticks.stepSize = yAxios.interval;
-
-            ppCurveChart.data.datasets[1].data = currentMaxComboPPCurve;
-            ppCurveChart.update();
-        } else if(opCode === 2) {
-            let result = CalcProcessor.parseOp2Packet(view);
-            currentComboPPCurve = result.ppCurvePoints;
-
-            let yAxios = calculateInterval(config.curveYAxiosStartFromZero ? 0 : currentComboPPCurve[0]);
-            ppCurveChart.config.options.scales.y.suggestedMin = config.curveYAxiosStartFromZero ? 0 : yAxios.minValue;
-            ppCurveChart.config.options.scales.y.suggestedMax = yAxios.maxValue;
-            ppCurveChart.config.options.scales.y.ticks.stepSize = yAxios.interval;
-
-            ppCurveChart.data.datasets[2].data = currentComboPPCurve;
-            ppCurveChart.data.datasets[0].data[0] = { x: currentAccuracy, y: currentPp };
-            ppCurveChart.update();
-        } else if(opCode === 4) {
-            let result = CalcProcessor.parseOp4Packet(view);
+            ppCalcSocket.send(CalcProcessor.calculateMaxComboPPCurve(currentCalcSessionAddr));
+        } else if(opCode === 1) {
+            let result = CalcProcessor.parseCalcSessionPacket(view);
             console.log("released calc addr: " + result.sessionMemAddr);
+        } else if (opCode === 2 || opCode === 3) {
+            let result = CalcProcessor.parsePPCurvePacket(view);
+            let isMaxComboCurve = opCode === 2;
+
+            if (isMaxComboCurve) {
+                currentMaxComboPPCurve = result.ppCurvePoints;
+            } else {
+                currentComboPPCurve = result.ppCurvePoints;
+            }
+
+            let yAxios = calculateInterval(config.curveYAxiosStartFromZero ? 0 : (isMaxComboCurve ? currentMaxComboPPCurve[0] : currentComboPPCurve[0]));
+            ppCurveChart.config.options.scales.y.suggestedMin = config.curveYAxiosStartFromZero ? 0 : yAxios.minValue;
+            ppCurveChart.config.options.scales.y.suggestedMax = yAxios.maxValue;
+            ppCurveChart.config.options.scales.y.ticks.stepSize = yAxios.interval;
+
+            if (isMaxComboCurve) {
+                ppCurveChart.data.datasets[1].data = currentMaxComboPPCurve;
+            } else {
+                ppCurveChart.data.datasets[2].data = currentComboPPCurve;
+                ppCurveChart.data.datasets[0].data[0] = { x: currentAccuracy, y: currentPp };
+            }
+            ppCurveChart.update();
         }
     });
 }
@@ -166,7 +169,7 @@ gosuSocket.onmessage = event => {
             currentAccuracy = 0.0;
             currentPp = 0.0;
 
-            ppCalcSocket.send(CalcProcessor.createOp1Packet((() => {
+            ppCalcSocket.send(CalcProcessor.createCalcSession((() => {
                 let path = String(config.osuSongsPath);
                 path += data.menu.bm.path.folder;
                 path += "\\";
@@ -183,14 +186,14 @@ gosuSocket.onmessage = event => {
             currentMaxComboPPCurve = null;
             currentComboPPCurve = null;
             if (currentCalcSessionAddr != null) {
-                ppCalcSocket.send(CalcProcessor.createOp4Packet(currentCalcSessionAddr));
+                ppCalcSocket.send(CalcProcessor.releaseCalcSession(currentCalcSessionAddr));
                 currentCalcSessionAddr = null;
             }
         }
     }
 
     if (gameState === 2 && currentCalcSessionAddr !== null) {
-        ppCalcSocket.send(CalcProcessor.createOp2Packet(currentCalcSessionAddr, comboList, data.gameplay.hits["0"]));
+        ppCalcSocket.send(CalcProcessor.calculateCurrentPPCurve(currentCalcSessionAddr, comboList, data.gameplay.hits["0"]));
         //ppCalcSocket.send(CalcProcessor.createOp5Packet(currentCalcSessionAddr, data.gameplay.hitEvents));
     }
 

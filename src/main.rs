@@ -38,9 +38,8 @@ fn main() {
                         let op_code = reader.read_u8().expect("read opcode");
 
                         match op_code {
-                            // create beatmap and
-                            // return pp curve of max combo and session id
-                            1 => {
+                            // create calc session
+                            0 => {
                                 let mods = reader.read_u32::<LE>().expect("read mods");
 
                                 let path_len = reader.read_u32::<LE>().expect("read pathlen");
@@ -52,7 +51,10 @@ fn main() {
                                 let mut calc_pool = current_mutex.lock().unwrap();
                                 let entry = calc_pool.entry(path);
                                 let session_addr = match entry {
-                                    Entry::Occupied(o) => o.into_mut(),
+                                    Entry::Occupied(o) => {
+                                        println!("get existing session at {}", o.get());
+                                        o.into_mut()
+                                    },
                                     Entry::Vacant(v) => {
                                         println!("creating session for beatmap {:?}", v.key());
                                         //mem keep
@@ -61,13 +63,53 @@ fn main() {
                                     },
                                 };
 
-                                let session = unsafe { mem::transmute::<i64, &mut CalcSession>(*session_addr) };
-
-                                let pp_curve = session.calc_max_combo_pp_curve(90.0, 1.0);
                                 let mut response: Vec<u8> = Vec::new();
 
-                                response.write_u8(1).expect("write opcode"); // op code
+                                response.write_u8(op_code).expect("write opcode"); // op code
                                 response.write_i64::<LE>(*session_addr).expect("write session mem"); // session mem address
+
+                                client.send_message(&Message::binary(response)).expect("send response op = 0");
+                            }
+                            // release calc session
+                            1 => {
+                                let session_address = reader.read_i64::<LE>().expect("read session address");
+
+                                let current_mutex = Arc::clone(&CALC_SESSIONS);
+                                let mut calc_pool = current_mutex.lock().unwrap();
+                                let prev_pool_size = calc_pool.len();
+                                calc_pool.retain(|_, addr| *addr != session_address);
+
+                                if prev_pool_size == calc_pool.len() + 1 {
+                                    let session = unsafe { mem::transmute::<i64, &mut CalcSession>(session_address) };
+                                    println!("releasing calc session at {}", session_address);
+                                    unsafe { Box::from_raw(session) };
+                                } else {
+                                    println!("session at {} is already released.", session_address);
+                                }
+
+                                let mut response: Vec<u8> = Vec::new();
+                                response.write_u8(op_code).expect("write opcode"); // op code
+                                response.write_i64::<LE>(session_address).expect("write session mem"); // session mem address
+
+                                client.send_message(&Message::binary(response)).expect("send message op = 4");
+                            }
+                            // calculate pp curve of max combo
+                            2 => {
+                                let session = unsafe {
+                                    let session_address = reader.read_i64::<LE>().expect("read session address");
+                                    mem::transmute::<i64, &mut CalcSession>(session_address)
+                                };
+
+                                let pp_curve = session.calc_max_combo_pp_curve(90.0, 1.0);
+
+                                println!("max combo pp curve range: {} -> {}",
+                                         pp_curve.first().expect("get first elem of max combo pp curve"),
+                                         pp_curve.last().expect("get first elem of max combo pp curve"),
+                                );
+
+                                let mut response: Vec<u8> = Vec::new();
+
+                                response.write_u8(op_code).expect("write opcode"); // op code
                                 let pp_curve_iter = pp_curve.iter();
                                 response.write_u64::<LE>(pp_curve_iter.len() as u64).expect("write pp curve len"); // pp curve len
                                 pp_curve_iter.for_each(|pp| {
@@ -77,7 +119,7 @@ fn main() {
                                 client.send_message(&Message::binary(response)).expect("send response op = 1");
                             }
                             // calculate current pp curve
-                            2 => {
+                            3 => {
                                 let session = unsafe {
                                     let session_address = reader.read_i64::<LE>().expect("read session address");
                                     mem::transmute::<i64, &mut CalcSession>(session_address)
@@ -92,12 +134,19 @@ fn main() {
                                     combo_list.push(combo as usize)
                                 }
 
-                                println!("combo List: {:?}, misses: {}", combo_list, misses);
+                                let debug_msg = format!("combo List: {:?}, misses: {}", combo_list, misses);
 
                                 let pp_curve = session.calc_current_pp_curve(90.0, 1.0, combo_list, misses);
+
+                                println!("current pp curve range: {} -> {}, {}",
+                                         pp_curve.first().expect("get first elem of max combo pp curve"),
+                                         pp_curve.last().expect("get first elem of max combo pp curve"),
+                                         debug_msg
+                                );
+
                                 let mut response: Vec<u8> = Vec::new();
 
-                                response.write_u8(2).expect("write opcode"); // op code
+                                response.write_u8(op_code).expect("write opcode"); // op code
                                 let pp_curve_iter = pp_curve.iter();
                                 response.write_u64::<LE>(pp_curve_iter.len() as u64).expect("write pp curve len"); // pp curve len
                                 pp_curve_iter.for_each(|pp| {
@@ -107,7 +156,7 @@ fn main() {
                                 client.send_message(&Message::binary(response)).expect("send response op = 2");
                             }
                             // gradual diff
-                            3 => {
+                            4 => {
                                 let session = unsafe {
                                     let session_address = reader.read_i64::<LE>().expect("read session address");
                                     mem::transmute::<i64, &mut CalcSession>(session_address)
@@ -118,7 +167,7 @@ fn main() {
                                 let gradual_diff = session.calc_gradual_diff(passed_objects as usize);
                                 let mut response: Vec<u8> = Vec::new();
 
-                                response.write_u8(3).expect("write opcode"); // op code
+                                response.write_u8(op_code).expect("write opcode"); // op code
                                 response.write_u64::<LE>(passed_objects).expect("write passed objects"); // passed objects
                                 response.write_f64::<LE>(if let Some(gradual_diff) = gradual_diff {
                                     gradual_diff.stars()
@@ -127,28 +176,6 @@ fn main() {
                                 }).expect("write stars"); // current stars
 
                                 client.send_message(&Message::binary(response)).expect("send message op = 3");
-                            }
-                            // release calc session
-                            4 => {
-                                let session_address = reader.read_i64::<LE>().expect("read session address");
-
-                                let current_mutex = Arc::clone(&CALC_SESSIONS);
-                                let mut calc_pool = current_mutex.lock().unwrap();
-                                let prev_pool_size = calc_pool.len();
-                                calc_pool.retain(|_, addr| *addr != session_address);
-
-                                if prev_pool_size == calc_pool.len() + 1 {
-                                    let session = unsafe { mem::transmute::<i64, &mut CalcSession>(session_address) };
-                                    println!("releasing calc session at {:?}", session_address);
-                                    unsafe { Box::from_raw(session) };
-                                }
-
-                                let mut response: Vec<u8> = Vec::new();
-                                response.write_u8(4).expect("write opcode"); // op code
-                                response.write_i64::<LE>(session_address).expect("write session mem"); // session mem address
-
-                                client.send_message(&Message::binary(response)).expect("send message op = 4");
-
                             }
                             // associate heatmap
                             5 => {
@@ -179,7 +206,7 @@ fn main() {
                                 let objects = session.associate_hit_object(frames.as_slice());
 
                                 let mut response: Vec<u8> = Vec::new();
-                                response.write_u8(5).expect("write opcode"); // op code
+                                response.write_u8(op_code).expect("write opcode"); // op code
 
                                 response.write_u64::<LE>(objects.len() as u64).expect("write hit objects len"); // hit objects len
                                 for obj in objects.iter() {
