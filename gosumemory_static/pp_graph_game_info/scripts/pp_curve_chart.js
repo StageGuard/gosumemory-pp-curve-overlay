@@ -34,7 +34,77 @@ function calculateInterval(minValue) {
     return { minValue, maxValue, interval, startValue };
 }
 
-const ppCurveChart = createPPCurveChat(chartContext);
+class CurrPPPoint extends Chart.BubbleController {
+    draw() { super.draw(arguments); }
+}
+CurrPPPoint.id = "currpppoint";
+Chart.register(CurrPPPoint);
+
+const ppCurveChart = new Chart(chartContext, {
+    type: 'currpppoint',
+    data: {
+        labels: ['90', '91', '92', '93', '94', '95', '96', '97', '98', '99', '100'],
+        datasets: [{
+            label: "curr",
+            data: [],
+            pointRadius: 5,
+            borderColor: "rgb(179, 255, 102)",
+            backgroundColor: "rgb(179, 255, 102)",
+
+        }, {
+            label: 'if fc curve',
+            data: [],
+            borderWidth: 4,
+            borderColor: "rgb(255, 204, 34)",
+            fill: false,
+            pointRadius: 0,
+            cubicInterpolationMode: 'monotone',
+            type: 'line',
+        }, {
+            label: 'curr curve',
+            data: [],
+            borderWidth: 4,
+            borderColor: "white",
+            fill: false,
+            pointRadius: 0,
+            cubicInterpolationMode: 'monotone',
+            type: 'line',
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scaleFontColor: "rgb(255,255,255)",
+        interaction: {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false
+        },
+        scales: {
+            x: {
+                grid: { display: false },
+                ticks: {
+                    stepSize: 1,
+                    color: "white",
+                    size: "12px",
+                }
+            },
+            y: {
+                grid: { display: true },
+                ticks: {
+                    color: "white",
+                    size: "15px",
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false,
+                position: 'bottom'
+            }
+        }
+    }
+})
 
 gosuSocket.onopen = () => { console.log("Successfully connected to gosumemory."); };
 ppCalcSocket.onopen = () => { console.log("Successfully connected to pp calc server.") }
@@ -61,10 +131,8 @@ ppCalcSocket.onmessage = event => {
             ppCurveChart.config.options.scales.y.ticks.stepSize = yAxios.interval;
 
             ppCurveChart.data.datasets[1].data = currentMaxComboPPCurve;
-            console.log(ppCurveChart.data.datasets[1])
-            console.log("init chart");
             ppCurveChart.update();
-        } if(opCode === 2) {
+        } else if(opCode === 2) {
             let result = CalcProcessor.parseOp2Packet(view);
             currentComboPPCurve = result.ppCurvePoints;
 
@@ -76,7 +144,7 @@ ppCalcSocket.onmessage = event => {
             ppCurveChart.data.datasets[2].data = currentComboPPCurve;
             ppCurveChart.data.datasets[0].data[0] = { x: currentAccuracy, y: currentPp };
             ppCurveChart.update();
-        } if(opCode === 4) {
+        } else if(opCode === 4) {
             let result = CalcProcessor.parseOp4Packet(view);
             console.log("released calc addr: " + result.sessionMemAddr);
         }
@@ -123,6 +191,7 @@ gosuSocket.onmessage = event => {
 
     if (gameState === 2 && currentCalcSessionAddr !== null) {
         ppCalcSocket.send(CalcProcessor.createOp2Packet(currentCalcSessionAddr, comboList, data.gameplay.hits["0"]));
+        //ppCalcSocket.send(CalcProcessor.createOp5Packet(currentCalcSessionAddr, data.gameplay.hitEvents));
     }
 
     if (data.gameplay.accuracy > 0) currentAccuracy = data.gameplay.accuracy;
