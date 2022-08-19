@@ -101,7 +101,8 @@ this.CalcProcessor = (function () {
                 let paX = view.getFloat32(offset, true); offset += 4;
                 let paY = view.getFloat32(offset, true); offset += 4;
                 let diff = view.getFloat64(offset, true); offset += 8;
-                hits.push({ paX, paY, diff });
+                let type = view.getUint8(offset); offset += 1;
+                hits.push({ paX, paY, diff, type });
             }
 
             return { hits };

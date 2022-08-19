@@ -1,72 +1,139 @@
 let gosuSocket = new ReconnectingWebSocket("ws://127.0.0.1:24050/ws");
 let ppCalcSocket = new ReconnectingWebSocket("ws://127.0.0.1:24051");
 
-const canvasSize = 220;
-const heatmapSize = 200;
-const drawObjectCount = 10;
+const canvasSize = 600;
+const heatmapSize = 300;
 let heatmap = document.getElementById("heatmap");
 heatmap.width = heatmap.height = canvasSize;
 let context = heatmap.getContext("2d");
 
 let gameState;
+let gameTime;
 
 let currentCalcSessionAddr = null;
-let currentHits = [];
 
-const heatmapBGGradient = context.createRadialGradient(
-    canvasSize / 2,canvasSize / 2,1,
-    canvasSize / 2,canvasSize / 2,heatmapSize / 2
-);
-heatmapBGGradient.addColorStop(0,"rgb(130,230,194)");
-heatmapBGGradient.addColorStop(1,"black");
+class HitDrawManager {
+    constructor(ctx) {
+        this.context = ctx;
+        this.loopThread = null;
 
-function heatmapDraw() {
-    context.fillStyle = heatmapBGGradient;
-    context.fillRect(0, 0, canvasSize, canvasSize);
+        this.currentPos = { x: null, y: null };
+        this.currentHit = null;
 
-    context.save();
-    context.beginPath();
-    context.lineWidth = 3;
-    context.shadowColor = 'white';
-    context.strokeStyle = "white";
-    context.shadowBlur = 15;
-    context.shadowOffsetX = 0;
-    context.shadowOffsetY = 0;
-    context.arc(canvasSize / 2,canvasSize / 2,heatmapSize / 2,0,2 * Math.PI, false);
-    context.stroke();
-    context.restore();
-    context.closePath();
-
-    context.save();
-    context.translate((canvasSize - heatmapSize) / 2, (canvasSize - heatmapSize) / 2);
-
-    let lastNObjects = currentHits.slice(-drawObjectCount)
-    for(const i in lastNObjects) {
-        const hit = lastNObjects[i];
-        const x = hit.paX * 200;
-        const y = hit.paY * 200;
-        const alpha = (Number(i) + (drawObjectCount - lastNObjects.length)) / (drawObjectCount - 1);
-
-        const color = i == lastNObjects.length - 1 ? "rgb(179, 255, 102)" : `rgba(255, 204, 34, ${alpha})`
-
-        context.beginPath();
-        context.lineWidth = 3;
-        context.shadowColor = 'grey';
-        context.strokeStyle = color;
-        context.shadowBlur = i == lastNObjects.length - 1 ? 5 : 5 * alpha;
-        context.shadowOffsetX = 0;
-        context.shadowOffsetY = 0;
-        context.arc(x, y, 5,0,2 * Math.PI, false);
-        context.stroke();
-
-        context.fillStyle = color;
-        context.arc(x, y, 5,0,2 * Math.PI, false);
-        context.fill();
-        context.closePath();
+        this.minusHitState = new Map();
     }
 
-    context.restore();
+    pushHit(hit) {
+        const x = (canvasSize - heatmapSize) / 2 + heatmapSize * hit.paX;
+        const y = (canvasSize - heatmapSize) / 2 + heatmapSize * hit.paY;
+
+        if (this.currentPos.x != null || this.currentPos.y != null) {
+            this.spawnMinusHitAlphaThread(this.currentHit);
+        }
+        this.currentPos = { x, y };
+        this.currentHit = hit;
+    }
+
+    spawnMinusHitAlphaThread(hit) {
+        const x = (canvasSize - heatmapSize) / 2 + heatmapSize * hit.paX;
+        const y = (canvasSize - heatmapSize) / 2 + heatmapSize * hit.paY;
+        let key = String(gameTime);
+
+        this.minusHitState.set(key, { x, y, time: 1000, type: hit.type });
+    }
+
+    startDrawLoop() {
+        this.loopThread = setInterval(() => {
+            this.heatmapDraw();
+        });
+
+    }
+    stopDrawLoop() {
+        if (this.loopThread != null) {
+            clearInterval(this.loopThread);
+            this.loopThread = null;
+            this.currentPos = { x: null, y: null };
+            this.currentHit = null;
+            this.minusHitState.clear();
+        }
+    }
+
+    heatmapDraw() {
+        this.context.fillStyle = "black";
+        this.context.fillRect(0, 0, canvasSize, canvasSize);
+
+        this.context.save();
+        this.context.beginPath();
+        this.context.lineWidth = 18;
+        this.context.strokeStyle = "rgb(255, 255, 255, 0.8)";
+        this.context.arc(canvasSize / 2,canvasSize / 2,heatmapSize / 2,0,2 * Math.PI, false);
+        this.context.stroke();
+        this.context.closePath();
+        this.context.restore();
+
+        this.context.save();
+        this.context.beginPath();
+        this.context.lineWidth = 18;
+        this.context.strokeStyle = "rgb(255, 255, 255, 0.2)";
+        this.context.arc(canvasSize / 2,canvasSize / 2,heatmapSize / 2 - 18,0,2 * Math.PI, false);
+        this.context.stroke();
+        this.context.closePath();
+        this.context.restore();
+        this.context.save();
+
+        for (const entry of this.minusHitState.entries()) {
+            let state = entry[1];
+            this.context.beginPath();
+            this.context.lineWidth = 7;
+
+            let alpha = 1;
+            if (state.time <= 150) {
+                alpha = state.time / 150;
+            }
+
+            if (state.type === 0) {
+                this.context.strokeStyle = `rgba(255, 0, 0, ${alpha})`;
+            } else if (state.type === 1) {
+                this.context.strokeStyle = `rgba(50, 188, 231, ${alpha})`;
+            } else if (state.type === 2) {
+                this.context.strokeStyle = `rgba(87, 277, 19, ${alpha})`;
+            } else {
+                this.context.strokeStyle = `rgba(218, 174, 70, ${alpha})`;
+            }
+
+            const decTime = this.minusHitState.get(entry[0]).time - 1;
+            if (decTime <= 0) {
+                this.minusHitState.delete(entry[0]);
+            } else {
+                this.minusHitState.get(entry[0]).time = decTime;
+            }
+
+            this.context.moveTo(state.x - 10, state.y - 10);
+            this.context.lineTo(state.x + 10, state.y + 10);
+            this.context.moveTo(state.x + 10, state.y - 10);
+            this.context.lineTo(state.x - 10, state.y + 10);
+            this.context.closePath();
+            this.context.stroke();
+        }
+
+        if (this.currentPos.x != null && this.currentPos.y != null) {
+            this.context.beginPath();
+            this.context.lineWidth = 8;
+            this.context.lineCap = "round";
+            this.context.strokeStyle = "white";
+            this.context.moveTo(this.currentPos.x - 15, this.currentPos.y);
+            this.context.lineTo(this.currentPos.x + 15, this.currentPos.y);
+            this.context.moveTo(this.currentPos.x, this.currentPos.y - 15);
+            this.context.lineTo(this.currentPos.x, this.currentPos.y + 15);
+            this.context.stroke();
+            this.context.closePath();
+        }
+
+        context.restore();
+    }
 }
+
+const hitDrawMgr = new HitDrawManager(context);
 
 gosuSocket.onopen = () => { console.log("Successfully connected to gosumemory."); };
 ppCalcSocket.onopen = () => { console.log("Successfully connected to pp calc server.") }
@@ -90,8 +157,7 @@ ppCalcSocket.onmessage = event => {
             console.log("released calc addr: " + result.sessionMemAddr);
         } else if (opCode === 5) {
             let result = CalcProcessor.parseHitFramesPacket(view);
-            for (const hit of result.hits) currentHits.push(hit);
-            heatmapDraw();
+            for (const hit of result.hits) hitDrawMgr.pushHit(hit);
         }
     });
 }
@@ -107,8 +173,6 @@ gosuSocket.onmessage = event => {
                 step: (now, fx) => heatmap.style.opacity = String(now)
             });
 
-            currentHits = [];
-            heatmapDraw();
             ppCalcSocket.send(CalcProcessor.createCalcSession((() => {
                 let path = String(config.osuSongsPath);
                 path += data.menu.bm.path.folder;
@@ -116,12 +180,14 @@ gosuSocket.onmessage = event => {
                 path += data.menu.bm.path.file;
                 return path;
             })(), data.menu.mods.num));
+            hitDrawMgr.startDrawLoop();
         } else {
             $({n: 1}).animate({n: 0}, {
                 duration: 250,
                 step: (now, fx) => heatmap.style.opacity = String(now)
             });
 
+            hitDrawMgr.stopDrawLoop();
             if (currentCalcSessionAddr != null) {
                 ppCalcSocket.send(CalcProcessor.releaseCalcSession(currentCalcSessionAddr));
                 currentCalcSessionAddr = null;
@@ -132,5 +198,7 @@ gosuSocket.onmessage = event => {
     if (gameState === 2 && currentCalcSessionAddr !== null) {
         ppCalcSocket.send(CalcProcessor.createHitFramesPacket(currentCalcSessionAddr, data.gameplay.hitEvents ? data.gameplay.hitEvents : []));
     }
+
+    gameTime = data.menu.bm.time.current;
 
 }
