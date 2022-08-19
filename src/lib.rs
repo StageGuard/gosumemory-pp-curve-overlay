@@ -15,8 +15,8 @@ pub struct CalcSession {
     gradual_diff: Option<Vec<DifficultyAttributes>>,
     perf: Option<PerformanceAttributes>,
 
-    pub circle_radius: f32,
-    pub hit_time_window: f64,
+    circle_radius: f32,
+    hit_time_window: f64,
     flip_objects: bool,
 
     current_hit_object_index: usize,
@@ -126,9 +126,9 @@ impl CalcSession {
         result
     }
 
-    pub fn associate_hit_object<'a>(&mut self, frames: &'a [HitFrame]) -> Vec<(HitObject, &'a HitFrame)> {
+    pub fn associate_hit_object<'a>(&mut self, frames: &'a [HitFrame]) -> Vec<ValidHit<'a>> {
         let mut hit_objects: &[HitObject];
-        let mut result: Vec<(HitObject, &'a HitFrame)> = Vec::new();
+        let mut result: Vec<ValidHit<'a>> = Vec::new();
 
         for frame in frames.iter() {
             // prevent whole frames at the start of watching replay
@@ -153,8 +153,10 @@ impl CalcSession {
                     // timeline: (<     hit object window time   (click)  >)
                     // or: (<  (click)   hit object window time     >)
                     let obj_pos = if self.flip_objects { Pos2 { x: ho.pos.x, y: 384f32 - ho.pos.y } } else { ho.pos };
+                    let distance = obj_pos.distance(frame.pos);
+
                     if f64::abs(ho.start_time - frame.time) <= self.hit_time_window
-                        && obj_pos.distance(frame.pos) <= self.circle_radius
+                        && distance <= self.circle_radius * 2f32
                     {
                         hit_object = Some(if self.flip_objects {
                             HitObject {
@@ -163,7 +165,11 @@ impl CalcSession {
                                 kind: ho.kind.clone()
                             }
                         } else { ho.clone() });
-                        self.current_hit_object_index += 1;
+
+                        if distance <= self.circle_radius {
+                            self.current_hit_object_index += 1;
+                        }
+
                         break;
                     }
                     // missed object
@@ -180,7 +186,27 @@ impl CalcSession {
                 }
 
                 if let Some(hit_object) = hit_object {
-                    result.push((hit_object, frame));
+                    let distance = hit_object.pos.distance(frame.pos);
+                    let circle_center = Pos2 { x: self.circle_radius, y: self.circle_radius };
+                    let relative_pos = frame.pos - hit_object.pos + circle_center;
+                    let time_diff = frame.time - hit_object.start_time;
+                    result.push(ValidHit {
+                        frame, time_diff,
+                        object: hit_object,
+                        relative_pos_x: relative_pos.x / (self.circle_radius * 2f32),
+                        relative_pos_y: relative_pos.y / (self.circle_radius * 2f32),
+                        hit_error_type: if distance > self.circle_radius { 0 } else {
+                            let diff_percentage = f64::abs(time_diff) / self.hit_time_window;
+                            dbg!(diff_percentage);
+                            if diff_percentage > 0.5 {
+                                3
+                            } else if diff_percentage > 0.25 {
+                                2
+                            } else {
+                                1
+                            }
+                        }
+                    });
                 }
             }
             self.last_k1_pressed = frame.k1;
@@ -202,6 +228,15 @@ pub struct HitFrame {
     pub time: f64,
     pub k1: bool,
     pub k2: bool
+}
+
+pub struct ValidHit<'a> {
+    frame: &'a HitFrame,
+    object: HitObject,
+    pub relative_pos_x: f32,
+    pub relative_pos_y: f32,
+    pub time_diff: f64,
+    pub hit_error_type: u8, //0:miss, 1:300, 2:100, 3:50
 }
 
 /*impl <'a> Drop for CalcSession<'a> {

@@ -201,22 +201,20 @@ fn main() {
                                     frames.push(HitFrame { pos: Pos2 { x, y }, time, k1, k2 });
                                 }
 
-                                let objects = session.associate_hit_object(frames.as_slice());
+                                let hits = session.associate_hit_object(frames.as_slice());
 
-                                println!("frame length: {}, time slice: {} -> {}, hit objects: {}.", frame_len, start_time, end_time, objects.len());
+                                println!("frame length: {}, time slice: {} -> {}, hit objects: {}.", frame_len, start_time, end_time, hits.len());
 
                                 let mut response: Vec<u8> = Vec::new();
                                 response.write_u8(op_code).expect("write opcode"); // op code
 
-                                response.write_u64::<LE>(objects.len() as u64).expect("write hit objects len"); // hit objects len
-                                for obj in objects.iter() {
-                                    let circle_center = Pos2 { x: session.circle_radius, y: session.circle_radius };
-                                    let relative_pos = obj.1.pos - obj.0.pos + circle_center;
+                                response.write_u64::<LE>(hits.len() as u64).expect("write hit objects len"); // hit objects len
+                                for hit in hits.iter() {
+                                    response.write_f32::<LE>(hit.relative_pos_x).expect("write hit x percentage"); // hit x percentage
+                                    response.write_f32::<LE>(hit.relative_pos_y).expect("write hit y percentage"); // hit y percentage
 
-                                    response.write_f32::<LE>(relative_pos.x / (session.circle_radius * 2f32)).expect("write object hit x percentage"); // hit x percentage
-                                    response.write_f32::<LE>(relative_pos.y / (session.circle_radius * 2f32)).expect("write object hit y percentage"); // hit y percentage
-
-                                    response.write_f64::<LE>(obj.1.time - obj.0.start_time).expect("write object time diff"); // hit time diff
+                                    response.write_f64::<LE>(hit.time_diff).expect("write time diff"); // hit time diff
+                                    response.write_u8(hit.hit_error_type).expect("write hit error type"); // hit time diff
                                 }
 
                                 client.send_message(&Message::binary(response)).expect("send message op = 5");
