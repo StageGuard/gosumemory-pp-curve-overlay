@@ -74,7 +74,7 @@ this.CalcProcessor = (function () {
             return { ppCurvePoints }
         },
 
-        createOp5Packet(sessionMemAddr, hitFrames) {
+        createHitFramesPacket(sessionMemAddr, hitFrames) {
             let buffer = new ArrayBuffer(1 + 8 + 8 + (4 + 4 + 8 + 1 + 1) * hitFrames.length);
             let view = new DataView(buffer);
             let offset = 0;
@@ -93,7 +93,7 @@ this.CalcProcessor = (function () {
 
             return new Uint8Array(buffer);
         },
-        parseOp5Packet(view) {
+        parseHitFramesPacket(view) {
             let offset = 1;
             let hitLen = view.getBigUint64(offset, true); offset += 8;
             let hits = [];
