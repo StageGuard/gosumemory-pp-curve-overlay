@@ -150,6 +150,8 @@ impl CalcSession {
                         continue
                     }
                     // valid hit
+                    // timeline: (<     hit object window time   (click)  >)
+                    // or: (<  (click)   hit object window time     >)
                     let obj_pos = if self.flip_objects { Pos2 { x: ho.pos.x, y: 384f32 - ho.pos.y } } else { ho.pos };
                     if f64::abs(ho.start_time - frame.time) <= self.hit_time_window
                         && obj_pos.distance(frame.pos) <= self.circle_radius
@@ -166,7 +168,14 @@ impl CalcSession {
                     }
                     // missed object
                     if frame.time - ho.start_time > self.hit_time_window {
+                        // timeline: (<     hit object window time     >) ...... (click)
+                        // may also hit the next hit object, so just move ptr forward.
                         self.current_hit_object_index += 1;
+                    } else {
+                        // ho.start_time - frame.time > self.hit_time_window
+                        // timeline: (click) ...... (<     hit object window time     >)
+                        // so it is a invalid hit, so break hit object iteration
+                        break
                     }
                 }
 
