@@ -45,7 +45,7 @@ overlay 主体，他会和 pp_calc_server 进行 WebSocket 通信（就像和 go
 
 把 [gosumemory_static/pp_graph_game_info](gosumemory_static/pp_graph_game_info) 文件夹 放到 `你的gosumemory目录/static/` 下。
 
-打开 `pp_graph_game_info/cnofig.js` 按照说明修改配置选项。
+打开 `pp_graph_game_info/config.js` 按照说明修改配置选项。
 
 打开 `pp_calc_server.exe` 会看到程序有如下输出：
 ```
