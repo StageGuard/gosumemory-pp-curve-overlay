@@ -18,6 +18,7 @@ class HitDrawManager {
         this.loopThread = null;
 
         this.currentPos = { x: null, y: null };
+        this.posAnimator = null;
         this.currentHit = null;
 
         this.minusHitState = new Map();
@@ -28,9 +29,20 @@ class HitDrawManager {
         const y = (canvasSize - heatmapSize) / 2 + heatmapSize * hit.paY;
 
         if (this.currentPos.x != null || this.currentPos.y != null) {
+            const preX = this.currentPos.x;
+            const preY = this.currentPos.y;
+            if (this.posAnimator != null) $({ n: 0 }).stop();
+            this.posAnimator = $({ n: 0 }).animate({ n: 1 }, {
+                duration: 450,
+                step: (now, fx) => {
+                    if (this.currentPos.x != null) this.currentPos.x = preX + (x - preX) * now;
+                    if (this.currentPos.x != null) this.currentPos.y = preY + (y - preY) * now;
+                }
+            }, 'ease');
             this.spawnMinusHitAlphaThread(this.currentHit);
+        } else {
+            this.currentPos = { x, y };
         }
-        this.currentPos = { x, y };
         this.currentHit = hit;
     }
 
@@ -54,6 +66,7 @@ class HitDrawManager {
             this.loopThread = null;
             this.currentPos = { x: null, y: null };
             this.currentHit = null;
+            this.posAnimator = null;
             this.minusHitState.clear();
         }
     }
