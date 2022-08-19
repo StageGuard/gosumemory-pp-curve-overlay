@@ -18,7 +18,7 @@ const heatmapBGGradient = context.createRadialGradient(
     canvasSize / 2,canvasSize / 2,heatmapSize / 2
 );
 heatmapBGGradient.addColorStop(0,"rgb(130,230,194)");
-heatmapBGGradient.addColorStop(1,"rgba(255, 255, 255, 0)");
+heatmapBGGradient.addColorStop(1,"black");
 
 function heatmapDraw() {
     context.fillStyle = heatmapBGGradient;
