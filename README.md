@@ -32,9 +32,15 @@ overlay 主体，他会和 pp_calc_server 进行 WebSocket 通信（就像和 go
 
 对于 accuracy 指示器和 PP 指示器，如果数值比之前高，它会变成绿色，代表 accuracy 或 PP 提高了，否则它会变成红色。
 
-#### PP 曲线图
+#### PP 曲线图 (需要 pp_calc_server)
 
 在 PP 曲线图中，黄色曲线代表如果全连（Full Combo）的 PP 曲线，白色代表当前状态如果在结束时全连的 PP 曲线，绿色的点表示此时此刻的 PP 值，同 PP 指示器。
+
+曲线是动态更新的，并且有动画。
+
+#### Heatmap 打击图 (需要 pp_calc_server)
+
+圆形的打击图，用来显示每个打击的 note 的鼠标相对位置，同时用不同颜色区分打击状态。
 
 ## 使用
 首先要安装 Rust 的工具链 [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html)。
@@ -55,3 +61,7 @@ listening at "127.0.0.1:24051"
 打开 gosumemory 程序，在 OBS 中添加浏览器源。
 * 分数指示器：`http://127.0.0.1:24050/pp_graph_game_info/` ，大小 `1920x1080`。
 * PP 曲线图：`http://127.0.0.1:24050/pp_graph_game_info/ppCurveChart.html` ，大小 `450x270`。
+* Heatmap 打击图：`http://127.0.0.1:24050/pp_graph_game_info/heatmap.html` ，大小 `600x600`。
+
+> 如果要使用 Heatmap 打击图，在[此 Pull Request](https://github.com/l3lackShark/gosumemory/pull/145) 合并之前，请使用[此版本](https://github.com/StageGuard/gosumemory)的 gosumemory。
+你可以在 release 中下载 gosumemory 的预构建程序。
