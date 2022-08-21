@@ -39,19 +39,12 @@ class HitDrawManager {
                     if (this.currentPos.x != null) this.currentPos.y = preY + (y - preY) * now;
                 }
             }, 'ease');
-            this.spawnMinusHitAlphaThread(this.currentHit);
+
+            this.minusHitState.set(String(gameTime), { x, y, time: 1000, type: hit.type });
         } else {
             this.currentPos = { x, y };
         }
         this.currentHit = hit;
-    }
-
-    spawnMinusHitAlphaThread(hit) {
-        const x = (canvasSize - heatmapSize) / 2 + heatmapSize * hit.paX;
-        const y = (canvasSize - heatmapSize) / 2 + heatmapSize * hit.paY;
-        let key = String(gameTime);
-
-        this.minusHitState.set(key, { x, y, time: 1000, type: hit.type });
     }
 
     startDrawLoop() {
