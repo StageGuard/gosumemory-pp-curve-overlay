@@ -197,7 +197,6 @@ impl CalcSession {
                         relative_pos_y: relative_pos.y / (self.circle_radius * 2f32),
                         hit_error_type: if distance > self.circle_radius { 0 } else {
                             let diff_percentage = f64::abs(time_diff) / self.hit_time_window;
-                            dbg!(diff_percentage);
                             if diff_percentage > 0.5 {
                                 3
                             } else if diff_percentage > 0.25 {
