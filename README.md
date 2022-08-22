@@ -4,7 +4,11 @@
 
 演示视频：[BV1bF411w7GM](https://www.bilibili.com/video/BV1bF411w7GM)
 
-![preview](assets/preview.png)
+
+<table>
+<img alt="preview_pp_curve_chart" src="assets/preview_pp_curve_chart.png" height="185" style="display: inline; margin-right: 20px"/>
+<img alt="preview_std_heatmap" src="assets/preview_std_heatmap.png" style="display: inline"/>
+</table>
 
 ## 特性
 * 基于 gosumemory，可以用于直播端和 gameoverlay。
