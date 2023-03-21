@@ -27,7 +27,7 @@ pub struct CalcSession {
 
 impl CalcSession {
     pub fn new(path: &String, mods: u32) -> Self {
-        Self {
+        let mut session = Self {
             beatmap: Beatmap::from_path(path).unwrap(),
             mods,
             gradual_diff: None,
@@ -39,26 +39,27 @@ impl CalcSession {
             last_hit_object_index: 0,
             last_k1_pressed: false,
             last_k2_pressed: false,
-        }.init_calc_factors()
-    }
+        };
 
-    fn init_calc_factors(mut self) -> Self {
-        self.gradual_diff = Some(
-            self.beatmap.gradual_difficulty(self.mods).collect::<Vec<DifficultyAttributes>>()
+        session.gradual_diff = Some(
+            session.beatmap.gradual_difficulty(mods).collect::<Vec<DifficultyAttributes>>()
         );
-        self.perf = Some(self.beatmap.pp().mods(self.mods).calculate());
+        session.perf = Some(session.beatmap.pp().mods(mods).calculate());
 
-        let beatmap_attr = self.beatmap.attributes().mods(self.mods).build();
-        self.circle_radius = 54.42 - 4.48 * beatmap_attr.cs as f32;
-        self.hit_time_window = -12f64 * beatmap_attr.od + 259.5;
-        if self.mods & 16 > 0 { self.flip_objects = true };
+        let beatmap_attr = session.beatmap.attributes().mods(mods).build();
+        session.circle_radius = 54.42 - 4.48 * beatmap_attr.cs as f32;
+        session.hit_time_window = -12f64 * beatmap_attr.od + 259.5;
+
+        if mods & 16 > 0 { session.flip_objects = true };
+
         // find the last object which is not spinner
-        for (idx, hit_object) in self.beatmap.hit_objects.iter().rev().enumerate() {
+        for (idx, hit_object) in session.beatmap.hit_objects.iter().rev().enumerate() {
             if matches!(hit_object.kind, HitObjectKind::Spinner { .. }) { continue }
-            self.last_hit_object_index = self.beatmap.hit_objects.len() - idx - 1;
+            session.last_hit_object_index = session.beatmap.hit_objects.len() - idx - 1;
             break
         }
-        self
+
+        session
     }
 
     //called once

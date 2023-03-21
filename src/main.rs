@@ -35,14 +35,18 @@ fn resolve_request(data: Vec<u8>) -> Option<Vec<u8>> {
             let entry = calc_pool.entry(path);
             let session_addr = match entry {
                 Entry::Occupied(o) => {
-                    println!("use existing session at {}.", o.get());
+                    println!("use existing session at 0x{:x}.", o.get());
                     o.into_mut()
                 },
                 Entry::Vacant(v) => {
-                    println!("creating session for beatmap {:?}.", v.key().split('\\').last().expect("get file name of beatmap"));
                     //mem keep
                     let leaked = Box::leak(Box::new(CalcSession::new(v.key(), mods)));
-                    v.insert(leaked as *const _ as i64)
+                    let addr = leaked as *const _ as i64;
+                    
+                    let beatmap_name = v.key().split('\\').last().expect("get file name of beatmap");
+                    println!("creating session for beatmap {:?} at 0x{:x}.", beatmap_name, addr);
+                    
+                    v.insert(addr)
                 },
             };
 
@@ -64,10 +68,10 @@ fn resolve_request(data: Vec<u8>) -> Option<Vec<u8>> {
 
             if prev_pool_size == calc_pool.len() + 1 {
                 let session = unsafe { mem::transmute::<i64, &mut CalcSession>(session_address) };
-                println!("releasing calc session at {}.", session_address);
+                println!("releasing calc session at 0x{:x}.", session_address);
                 unsafe { Box::from_raw(session) };
             } else {
-                println!("session at {} is already released.", session_address);
+                println!("session at 0x{:x} is already released.", session_address);
             }
 
             let mut response: Vec<u8> = Vec::new();
